@@ -1,0 +1,9 @@
+{
+  "project": "AI-Doktora — NASA SOH(k+1) + RUL(k)",
+  "source_archive_sha256": "b27006190f196d8a66cbdedcc35b77c97988b5e0823a2cffb825c91ebc9af453",
+  "target_python": "3.9.x Windows x64",
+  "data_state": "No original NASA MAT data in uploaded source ZIP; demo_synthetic included and official downloader provided",
+  "validation": "15 automated tests passing; end-to-end fake-MAT fixture passing; no NASA benchmark training performed",
+  "source_material": "AI-Doktora-main.zip supplied by user; docs and code inspected",
+  "excluded": "Original 31 PDF papers and duplicate prototype code intentionally not duplicated in lean delivery"
+}

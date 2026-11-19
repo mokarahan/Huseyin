@@ -1,0 +1,38 @@
+{
+  "variant": "hybrid",
+  "seed": 2027,
+  "window": 10,
+  "group": {
+    "train": [
+      "B0005",
+      "B0006"
+    ],
+    "validation": "B0018",
+    "test": "B0007"
+  },
+  "best_epoch": 38,
+  "train_samples": 118,
+  "validation_samples": 35,
+  "test_samples": 76,
+  "parameters": 18130,
+  "training_seconds": 7.108,
+  "metrics": {
+    "soh_mae_pct_points": 0.5279537000154194,
+    "soh_rmse_pct_points": 0.7035963742086474,
+    "soh_r2": 0.9753167219694977,
+    "rul_mae_cycles": 14.885497381812648,
+    "rul_rmse_cycles": 16.91878176311411
+  },
+  "bias_ttest": {
+    "soh": {
+      "mean_bias": -0.05917920564350329,
+      "t_stat": -0.7310007918405318,
+      "p_value": 0.4670563165094369
+    },
+    "rul": {
+      "mean_bias": -14.36329308309053,
+      "t_stat": -13.912331554797595,
+      "p_value": 1.8117211270678533e-22
+    }
+  }
+}

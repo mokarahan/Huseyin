@@ -1,0 +1,38 @@
+{
+  "variant": "cnn_tcn",
+  "seed": 2027,
+  "window": 10,
+  "group": {
+    "train": [
+      "B0005",
+      "B0006"
+    ],
+    "validation": "B0007",
+    "test": "B0018"
+  },
+  "best_epoch": 17,
+  "train_samples": 118,
+  "validation_samples": 76,
+  "test_samples": 35,
+  "parameters": 13842,
+  "training_seconds": 4.322,
+  "metrics": {
+    "soh_mae_pct_points": 0.7642687116350446,
+    "soh_rmse_pct_points": 0.9182681610371276,
+    "soh_r2": 0.9088266091141811,
+    "rul_mae_cycles": 3.027394676208496,
+    "rul_rmse_cycles": 3.781844114387653
+  },
+  "bias_ttest": {
+    "soh": {
+      "mean_bias": 0.49855826241629464,
+      "t_stat": 3.7698359137260358,
+      "p_value": 0.0006230127414962487
+    },
+    "rul": {
+      "mean_bias": 2.2228835242135183,
+      "t_stat": 4.236350962948253,
+      "p_value": 0.000163650657952022
+    }
+  }
+}
