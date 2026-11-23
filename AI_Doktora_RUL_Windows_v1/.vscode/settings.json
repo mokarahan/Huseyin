@@ -1,0 +1,26 @@
+{
+  "editor.rulers": [120],
+  "terminal.integrated.env.windows": {
+    "env:PROJECT_HOME":  "C:\\Users\\xmehmetok\\Desktop\\AI-Doktora"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/data": true,
+    "**/results": true,
+    "**/src/__pycache__": true,
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/data": true,
+    "**/results": true,
+    "**/src/__pycache__": true,
+  },
+  "python.autoComplete.extraPaths": [
+    "/opt/ros/lyrical/opt/gz_sim_vendor/lib/python",
+    "/opt/ros/lyrical/opt/gz_transport_vendor/lib/python",
+    "/opt/ros/lyrical/opt/sdformat_vendor/lib/python",
+    "/opt/ros/lyrical/opt/gz_msgs_vendor/lib/python",
+    "/opt/ros/lyrical/opt/gz_math_vendor/lib/python",
+    "/opt/ros/lyrical/lib/python3.14/site-packages"
+  ]
+}
