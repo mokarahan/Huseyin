@@ -1,0 +1,102 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DEBUG-LOADER-LIN",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--filename", "${env:PROJECT_HOME}/export/metadata.csv",
+                "--data_dir", "${env:PROJECT_HOME}/export/",
+                "--normalize_dir", "${env:PROJECT_HOME}/normalize/",
+                "--no-figures",
+                "--no-logs",
+                "--no-debug"
+            ]
+        },
+        {
+            "name": "DEBUG-LOADER-WIN",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--filename", "${env:PROJECT_HOME}\\export\\metadata.csv",
+                "--data_dir", "${env:PROJECT_HOME}\\export\\",
+                "--normalize_dir", "${env:PROJECT_HOME}\\normalize\\",
+                "--figures",
+                "--logs",
+                "--debug"
+            ]
+        },
+        {
+            "name": "DEBUG-GENERATOR-WIN",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--import_dir", "Dataset/NASA",
+                "--export_dir", "export/",
+                "--metafile",   "export/metadata.csv",
+                "--zip_dir",    "./"
+            ]
+        },
+        {
+            "name": "DEBUG-GENERATOR-LIN",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--import_dir", "Dataset/NASA/",
+                "--export_dir", "export/",
+                "--metafile",   "export/metadata.csv",
+                "--zip_dir",    "./"
+            ]
+        },
+        {
+            "name": "DEBUG-NO-ARG",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"args": "${command:pickArgs}"
+        },
+        {
+            "name": "DEBUG-MODULE-WIN",
+            "type": "debugpy",
+            "request": "launch",
+            //"module": "src.models.${fileBasenameNoExtension}",
+            "module": "src.models.MHAHandler",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"args": "${command:pickArgs}"
+            
+            "args": [
+                "--project_home", "${env:PROJECT_HOME}\\normalize",
+                "--no-debug"
+            ]
+        },
+        {
+            "name": "DEBUG-MODULE-LIN",
+            "type": "debugpy",
+            "request": "launch",
+            //"module": "src.models.${fileBasenameNoExtension}",
+            "module": "src.models.MHAHandler",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            //"args": "${command:pickArgs}"
+            "env": {
+                "NORMALIZE_HOME": "${PROJECT_HOME}/normalize/"
+            },
+            "args": [
+                "--project_home", "$NORMALIZE_HOME",
+                "--no-debug"
+            ]
+        },
+    ]
+}
