@@ -1,6 +1,6 @@
-"""Expériences reproductibles : séparation par batterie, entraînement, métriques.
+"""Reproducible experiments: per-battery split, training, metrics.
 
-Aucune statistique ni décision d'arrêt ne doit utiliser la batterie test.
+No statistic or stopping decision may use the test battery.
 """
 import copy
 import csv
@@ -27,18 +27,18 @@ def seed_everything(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-    # Les expériences CUDA restent dépendantes des opérations disponibles.
+    # CUDA experiments remain dependent on the available operations.
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
 
 def split_cells(ids, test_id):
-    """Fold externe tenu à l'écart. La validation vient d'une AUTRE batterie."""
+    """Outer fold held out. Validation comes from ANOTHER battery."""
     ids = sorted(ids)
     if len(ids) < 3 or test_id not in ids:
-        raise ValueError("Au moins trois batteries avec EOL observe sont requises")
+        raise ValueError("At least three batteries with an observed EOL are required")
     other = [name for name in ids if name != test_id]
-    # Choix fixe et reproductible, jamais fondé sur le score test.
+    # Fixed, reproducible choice, never based on the test score.
     validation = other[-1]
     training = other[:-1]
     assert not (set(training) & {validation, test_id})
@@ -51,7 +51,7 @@ def concatenate(batches):
 
 
 def _mask_aux(batch, aux_mode):
-    """Neutralise à 0 la/les variables auxiliaires ciblées pour l'ablation."""
+    """Zero out the auxiliary variable(s) targeted by the ablation."""
     if aux_mode == "all":
         return batch
     out = dict(batch)
@@ -80,7 +80,7 @@ def build_fold(cells, test_id, window, aux_mode="all"):
 
 
 def metrics(y, prediction):
-    """Erreurs en unités physiques : SOH en points de %, RUL en cycles."""
+    """Errors in physical units: SOH in percentage points, RUL in cycles."""
     error = np.asarray(prediction, dtype=np.float64) - np.asarray(y, dtype=np.float64)
     return {"soh_mae_pct_points": float(np.mean(np.abs(error[:, 0]))),
             "soh_rmse_pct_points": float(np.sqrt(np.mean(error[:, 0] ** 2))),
@@ -90,7 +90,7 @@ def metrics(y, prediction):
 
 
 def paired_bias_ttest(truth, prediction):
-    """Test t apparié (prédit vs réel) : t>0 surestimation, t<0 sous-estimation."""
+    """Paired t-test (predicted vs actual): t>0 overestimation, t<0 underestimation."""
     out = {}
     for idx, name in enumerate(("soh", "rul")):
         diff = np.asarray(prediction[:, idx], dtype=np.float64) - np.asarray(truth[:, idx], dtype=np.float64)
@@ -116,10 +116,10 @@ def _model_predict(model, batch, device, batch_size=256):
 
 
 def _ridge_features(batch):
-    """Une référence simple : statistique des signaux et métadonnées du passé.
+    """A simple baseline: signal statistics and metadata from the past.
 
-    Par cycle : moyenne V/I/T + V initial/final + caractéristiques connues.
-    L'aplatissement ne porte que sur la fenêtre des cycles passés.
+    Per cycle: mean V/I/T + initial/final V + known features.
+    Flattening only covers the window of past cycles.
     """
     x, a = batch["x"], batch["aux"]
     descriptors = np.concatenate([x.mean(axis=2), x[:, :, 0, :1],
@@ -128,14 +128,14 @@ def _ridge_features(batch):
 
 
 def _multi_task_loss(prediction, target, alpha):
-    """Pertes compatibles avec les deux cibles z-score indépendantes."""
+    """Losses compatible with the two independent z-score targets."""
     soh = torch.nn.functional.mse_loss(prediction[:, 0], target[:, 0])
     rul = torch.nn.functional.smooth_l1_loss(prediction[:, 1], target[:, 1], beta=1.0)
     return alpha * soh + (1.0 - alpha) * rul
 
 
 def _fit_neural(train, val, variant, cfg, device):
-    """Entraîne sans jamais voir la cellule de test."""
+    """Train without ever seeing the test cell."""
     model = BatteryPredictor(variant, cfg.hidden, cfg.heads, cfg.dropout).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate,
                                   weight_decay=cfg.weight_decay)
@@ -179,7 +179,7 @@ def _fit_neural(train, val, variant, cfg, device):
 
 
 def train_one(cells, test_id, variant, cfg, out_dir, device_name="auto"):
-    """Orchestre une cellule test, les fichiers de résultats et le checkpoint."""
+    """Orchestrate one test cell, the result files and the checkpoint."""
     cfg.validate()
     seed_everything(cfg.seed)
     if device_name == "auto":
@@ -192,7 +192,7 @@ def train_one(cells, test_id, variant, cfg, out_dir, device_name="auto"):
     history = []
 
     if variant == "ridge":
-        # Baseline déterministe, sans early stopping ni dépendance au test.
+        # Deterministic baseline, no early stopping and no dependence on the test set.
         model = Ridge(alpha=10.0)
         model.fit(_ridge_features(train), train["y"])
         prediction = scaler.inverse_y(model.predict(_ridge_features(test)))
@@ -204,13 +204,13 @@ def train_one(cells, test_id, variant, cfg, out_dir, device_name="auto"):
         model, epoch_best, history = _fit_neural(train, val, variant, cfg, device)
         prediction = scaler.inverse_y(_model_predict(model, test, device))
         param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        # Le checkpoint contient les prétraitements, les groupes et la config.
+        # The checkpoint contains the preprocessing, the groups and the config.
         torch.save({"state_dict": model.cpu().state_dict(),
                     "variant": variant, "config": vars(cfg),
                     "scaler": scaler.to_dict(), "group": group},
                    str(folder / "model.pt"))
     else:
-        raise ValueError("Modele indisponible : " + variant)
+        raise ValueError("Model unavailable: " + variant)
 
     duration = time.perf_counter() - started
     truth = scaler.inverse_y(test["y"])
@@ -224,8 +224,8 @@ def train_one(cells, test_id, variant, cfg, out_dir, device_name="auto"):
     (folder / "report.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     if history:
         _write_csv(folder / "history.csv", history)
-    # Il faut les numéros des cycles réellement testés pour interpréter
-    # un graphique, et non seulement une seule métrique.
+    # The numbers of the cycles actually tested are needed to interpret
+    # a plot, not just a single metric.
     end_cycles = windows(cells[test_id], cfg.window)["cycle"]
     rows = [{"battery": test_id, "observed_cycle": int(end_cycles[i]),
              "true_next_soh_pct": float(truth[i, 0]),
@@ -255,16 +255,16 @@ def run_experiment(processed, out_dir, variants, test_ids, cfg, device="auto"):
                       if eol_index(cell["capacity"]) is not None
                       and eol_index(cell["capacity"]) >= cfg.window)
     if len(eligible) < 3:
-        raise ValueError("Trois batteries avec EOL observe et suffisamment de cycles sont necessaires."
-                         " Executer 'download', puis 'prepare'.")
+        raise ValueError("Three batteries with an observed EOL and enough cycles are required."
+                         " Run 'download', then 'prepare'.")
     tests = eligible if test_ids == ["all"] else test_ids
     results = []
     for battery in tests:
         if battery not in eligible:
-            raise ValueError("Batterie test non admissible : " + battery)
+            raise ValueError("Test battery not eligible: " + battery)
         for variant in variants:
             place = Path(out_dir) / ("seed_%d" % cfg.seed) / battery / variant
-            print("[TRAIN]", battery, variant, "train/validation/test independants")
+            print("[TRAIN]", battery, variant, "independent train/validation/test")
             result = train_one(cells, battery, variant, cfg, place, device)
             results.append({"test_battery": battery, "variant": variant,
                             **result["metrics"]})
@@ -272,7 +272,7 @@ def run_experiment(processed, out_dir, variants, test_ids, cfg, device="auto"):
                   (result["metrics"]["rul_mae_cycles"],
                    result["metrics"]["soh_mae_pct_points"]))
     _write_csv(Path(out_dir) / "comparison.csv", results)
-    # Moyennes macro : chaque batterie test compte une fois, pas chaque cycle.
+    # Macro averages: each test battery counts once, not each cycle.
     summary = {}
     for variant in variants:
         selected = [row for row in results if row["variant"] == variant]
@@ -287,7 +287,7 @@ def run_experiment(processed, out_dir, variants, test_ids, cfg, device="auto"):
 
 
 def _ci95_stats(values):
-    """Moyenne, écart-type (ddof=1) et demi-largeur IC 95 % (loi de Student)."""
+    """Mean, standard deviation (ddof=1) and 95% CI half-width (Student's t)."""
     arr = np.asarray(values, dtype=np.float64)
     n = len(arr)
     mean, std = float(np.mean(arr)), float(np.std(arr, ddof=1)) if n > 1 else 0.0
@@ -296,7 +296,7 @@ def _ci95_stats(values):
 
 
 def run_multiseed(processed, out_dir, variants, test_ids, cfg, seeds, device="auto"):
-    """Exécute `run_experiment` sur plusieurs graines et agrège IC 95 % + t-test de biais."""
+    """Run `run_experiment` over several seeds and aggregate 95% CI + bias t-test."""
     out = Path(out_dir)
     all_runs = []
     for seed in seeds:
@@ -312,13 +312,13 @@ def run_multiseed(processed, out_dir, variants, test_ids, cfg, seeds, device="au
     for bat in batteries:
         for var in variants:
             sub = [r for r in all_runs if r["test_battery"] == bat and r["variant"] == var]
-            # 1) Agrégation par graine (moyenne ± std ± IC95 %)
+            # 1) Per-seed aggregation (mean ± std ± 95% CI)
             row = {"test_battery": bat, "variant": var, "n_seeds": len(seeds)}
             for k in metric_keys:
                 st = _ci95_stats([r[k] for r in sub if r[k] is not None])
                 row[f"{k}_mean"], row[f"{k}_std"], row[f"{k}_ci95"] = st["mean"], st["std"], st["ci95"]
 
-            # 2) Prédiction d'ensemble (moyenne sur les graines) + t-test apparié de biais
+            # 2) Ensemble prediction (mean over seeds) + paired bias t-test
             preds, truth = [], None
             sig_rul_seeds = 0
             for s in seeds:
@@ -349,7 +349,7 @@ def run_multiseed(processed, out_dir, variants, test_ids, cfg, seeds, device="au
 
     _write_csv(out / "multiseed_per_battery.csv", per_battery_rows)
 
-    # 3) Résumé macro inter-cellules : moyenne des 4 batteries par graine, puis IC 95 % sur les graines
+    # 3) Cross-cell macro summary: mean of the 4 batteries per seed, then 95% CI over seeds
     summary = {"seeds": list(seeds), "batteries": batteries, "macro_over_seeds": {}, "ensemble_macro": {}}
     for var in variants:
         seed_macros = {
@@ -366,10 +366,10 @@ def run_multiseed(processed, out_dir, variants, test_ids, cfg, seeds, device="au
 
 
 def predict_checkpoint(checkpoint, processed, battery, cycle, device="cpu"):
-    """Inférence après un cycle complet; aucune étiquette n'entre dans le modèle."""
+    """Inference after a complete cycle; no label enters the model."""
     try:
         content = torch.load(str(checkpoint), map_location="cpu", weights_only=True)
-    except TypeError:  # torch antérieur à weights_only
+    except TypeError:  # torch older than weights_only
         content = torch.load(str(checkpoint), map_location="cpu")
     cfg = content["config"]
     model = BatteryPredictor(content["variant"], cfg["hidden"], cfg["heads"],
@@ -378,11 +378,11 @@ def predict_checkpoint(checkpoint, processed, battery, cycle, device="cpu"):
     model.eval()
     cells = read_cells(processed)
     if battery not in cells:
-        raise ValueError("Batterie absente des donnees preparees")
+        raise ValueError("Battery missing from the prepared data")
     cell = cells[battery]
     window = cfg["window"]
     if cycle < window or cycle > len(cell["x"]):
-        raise ValueError("Cycle non admissible : attendre au moins %d decharges" % window)
+        raise ValueError("Cycle not eligible: wait for at least %d discharges" % window)
     sample = _mask_aux({"x": cell["x"][cycle - window:cycle][None],
                         "aux": cell["aux"][cycle - window:cycle][None],
                         "y": np.zeros((1, 2), dtype=np.float32)},
@@ -397,4 +397,4 @@ def predict_checkpoint(checkpoint, processed, battery, cycle, device="cpu"):
             "next_soh_pct_raw": float(raw[0]),
             "rul_cycles_raw": float(raw[1]),
             "rul_cycles_display": float(max(0, raw[1])),
-            "warning": "Estimation de recherche, pas une garantie de securite BMS"}
+            "warning": "Research estimate, not a BMS safety guarantee"}

@@ -1,8 +1,8 @@
-"""Lire les .mat NASA et construire des observations sans information future.
+"""Read the NASA .mat files and build observations without future information.
 
-Pour chaque cycle de décharge achevé : 128 mesures (V, I, T) + durée +
-numéro de décharge connu. Capacity est enregistrée UNIQUEMENT pour les
-étiquettes; elle n'est jamais placée dans X.
+For each completed discharge cycle: 128 measurements (V, I, T) + duration +
+known discharge number. Capacity is recorded ONLY for the
+labels; it is never placed in X.
 """
 from pathlib import Path
 import json
@@ -13,21 +13,21 @@ from .config import (BATTERIES, SIGNALS, CAPACITY_NOMINAL_AH,
 
 
 def resample_discharge(time, voltage, current, temperature, points=N_POINTS):
-    """Interpolation sur le temps relatif; conserve la durée en secondes."""
+    """Interpolation over relative time; keeps the duration in seconds."""
     channels = [np.asarray(v, dtype=np.float64).ravel()
                 for v in (time, voltage, current, temperature)]
     if len({len(v) for v in channels}) != 1:
-        raise ValueError("Tailles incompatibles entre Time, V, I et T")
+        raise ValueError("Incompatible sizes between Time, V, I and T")
     if len(channels[0]) < 2:
-        raise ValueError("Decharge avec moins de deux mesures")
+        raise ValueError("Discharge with fewer than two measurements")
     matrix = np.column_stack(channels)
     matrix = matrix[np.isfinite(matrix).all(axis=1)]
     if len(matrix) < 2:
-        raise ValueError("Moins de deux mesures finies")
+        raise ValueError("Fewer than two finite measurements")
     matrix = matrix[np.argsort(matrix[:, 0], kind="stable")]
     matrix = matrix[np.r_[True, np.diff(matrix[:, 0]) > 0]]
     if len(matrix) < 2 or matrix[-1, 0] <= matrix[0, 0]:
-        raise ValueError("Aucune duree de decharge positive")
+        raise ValueError("No positive discharge duration")
     duration = float(matrix[-1, 0] - matrix[0, 0])
     x_time = (matrix[:, 0] - matrix[0, 0]) / duration
     target_time = np.linspace(0.0, 1.0, points)
@@ -37,20 +37,20 @@ def resample_discharge(time, voltage, current, temperature, points=N_POINTS):
 
 
 def _cycles(struct):
-    """MATLAB: cycle peut être un scalaire ou un tableau de mat_struct."""
+    """MATLAB: cycle can be a scalar or an array of mat_struct."""
     cycles = getattr(struct, "cycle", None)
     if cycles is None:
-        raise ValueError("Champ MATLAB 'cycle' introuvable")
+        raise ValueError("MATLAB field 'cycle' not found")
     return np.asarray(cycles, dtype=object).ravel()
 
 
 def load_nasa_battery(path):
-    """Extraction directe du fichier NASA; aucune étiquette artificielle."""
+    """Direct extraction from the NASA file; no artificial labels."""
     path = Path(path)
     name = path.stem.upper()
     mat = loadmat(str(path), squeeze_me=True, struct_as_record=False)
     if name not in mat:
-        raise ValueError("Cle MATLAB absente: " + name)
+        raise ValueError("Missing MATLAB key: " + name)
     traces, durations, capacities, warnings = [], [], [], []
     for operation, cycle in enumerate(_cycles(mat[name]), start=1):
         if str(getattr(cycle, "type", "")).strip() != "discharge":
@@ -62,7 +62,7 @@ def load_nasa_battery(path):
         try:
             capacity = float(np.asarray(getattr(data, "Capacity")).ravel()[0])
             if not np.isfinite(capacity) or capacity <= 0 or capacity > 2.5:
-                raise ValueError("Capacity non plausible (%s Ah)" % capacity)
+                raise ValueError("Implausible capacity (%s Ah)" % capacity)
             x, duration = resample_discharge(
                 getattr(data, "Time"),
                 *(getattr(data, signal) for signal in SIGNALS))
@@ -73,10 +73,10 @@ def load_nasa_battery(path):
         durations.append(duration)
         capacities.append(capacity)
     if not traces:
-        raise ValueError("Aucune decharge valide dans " + str(path))
+        raise ValueError("No valid discharge in " + str(path))
     n = len(traces)
-    # Le rang de la décharge suit les enregistrements valides, et non les
-    # opérations de charge ou d'impédance; les exclusions sont documentées.
+    # The discharge index follows valid records, not charge or
+    # impedance operations; exclusions are documented.
     aux = np.column_stack([np.log1p(durations), np.arange(1, n + 1)])
     return {"x": np.stack(traces).astype(np.float32),
             "aux": aux.astype(np.float32),
@@ -85,7 +85,7 @@ def load_nasa_battery(path):
 
 
 def eol_index(capacity, threshold=CAPACITY_NOMINAL_AH * EOL_FRACTION):
-    """Premier franchissement observé. None = censuré, pas de RUL inventé."""
+    """First observed crossing. None = censored, no invented RUL."""
     hits = np.flatnonzero(np.asarray(capacity) <= threshold)
     return int(hits[0]) if len(hits) else None
 
@@ -94,7 +94,7 @@ def prepare(raw_dir, processed_dir):
     raw_dir, processed_dir = Path(raw_dir), Path(processed_dir)
     processed_dir.mkdir(parents=True, exist_ok=True)
     if (processed_dir / "DEMO_NOT_REAL_DATA.txt").exists():
-        raise ValueError("Jeu DEMO detecte. Vider data/processed avant import NASA pour ne pas melanger les sources.")
+        raise ValueError("DEMO dataset detected. Empty data/processed before importing NASA data so the sources are not mixed.")
     report = {"nominal_ah": CAPACITY_NOMINAL_AH,
               "eol_threshold_ah": CAPACITY_NOMINAL_AH * EOL_FRACTION,
               "n_points": N_POINTS, "batteries": {}}
@@ -122,7 +122,7 @@ def prepare(raw_dir, processed_dir):
 
 
 def read_cells(processed_dir):
-    """Les batteries sans franchissement EOL restent décrites mais non étiquetées."""
+    """Batteries without an EOL crossing remain described but unlabeled."""
     result = {}
     for file in sorted(Path(processed_dir).glob("B*.npz")):
         if file.stem not in BATTERIES:
@@ -133,22 +133,22 @@ def read_cells(processed_dir):
 
 
 def windows(cell, window=10):
-    """Cible à k : SOH(k+1) et RUL(k), sans accès aux signaux de k+1.
+    """Target at k: SOH(k+1) and RUL(k), without access to the signals of k+1.
 
-    Exclut le cycle EOL : l'étiquette SOH(k+1) ne requiert donc jamais
-    une mesure post-EOL. Le RUL=0 n'appartient pas au jeu supervisé commun.
+    Excludes the EOL cycle: the SOH(k+1) label thus never requires
+    a post-EOL measurement. RUL=0 is not part of the common supervised set.
     """
     x, aux, capacity = (cell[k] for k in ("x", "aux", "capacity"))
     at = eol_index(capacity)
     if at is None:
-        raise ValueError("Batterie censuree : pas de RUL exact observable")
+        raise ValueError("Censored battery: no exact RUL observable")
     if len(x) != len(aux) or len(x) != len(capacity):
-        raise ValueError("Nombre de cycles incoherent")
+        raise ValueError("Inconsistent number of cycles")
     if x.shape[1:] != (N_POINTS, 3) or aux.shape[1:] != (2,):
-        raise ValueError("Forme des entrees non conforme")
+        raise ValueError("Input shape does not conform")
     ends = np.arange(window - 1, at, dtype=int)
     if not len(ends):
-        raise ValueError("Pas assez de cycles avant EOL pour window=%d" % window)
+        raise ValueError("Not enough cycles before EOL for window=%d" % window)
     signal = np.stack([x[k - window + 1:k + 1] for k in ends]).astype(np.float32)
     features = np.stack([aux[k - window + 1:k + 1] for k in ends]).astype(np.float32)
     target = np.column_stack([100 * capacity[ends + 1] / CAPACITY_NOMINAL_AH,

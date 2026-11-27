@@ -1,4 +1,4 @@
-"""Figures de prédiction directement vérifiables à partir du CSV sauvegardé."""
+"""Prediction figures directly verifiable from the saved CSV."""
 import csv
 from pathlib import Path
 import matplotlib

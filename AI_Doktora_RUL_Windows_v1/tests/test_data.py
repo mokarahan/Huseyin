@@ -1,4 +1,4 @@
-"""Les tests expriment des invariants scientifiques, pas des scores inventés."""
+"""The tests express scientific invariants, not invented scores."""
 import numpy as np
 import pytest
 from scipy.io import savemat
@@ -36,9 +36,9 @@ def test_windows_future_soh_and_no_target_in_x():
     data = windows({"x": x, "aux": aux, "capacity": capacities}, window=3)
     assert data["cycle"].tolist() == [3, 4, 5]
     assert data["eol_cycle"] == 6
-    assert data["y"][0, 0] == pytest.approx(92.5)  # SOH au cycle 4
+    assert data["y"][0, 0] == pytest.approx(92.5)  # SOH at cycle 4
     assert data["y"][0, 1] == pytest.approx(3.0)
-    assert data["x"][0, -1, 0, 0] == pytest.approx(2.0)  # cycle 3 seulement
+    assert data["x"][0, -1, 0, 0] == pytest.approx(2.0)  # cycle 3 only
     assert data["x"][0].shape == (3, 128, 3)
 
 
@@ -51,7 +51,7 @@ def test_train_stats_never_use_test_cell(tmp_path):
     assert groups["test"] != groups["validation"]
     direct = TrainScaler().fit(train)
     assert np.allclose(direct.parameters["x"][0], 0, atol=0.03)
-    # Val et test ne sont pas normalisés indépendamment à moyenne 0.
+    # Val and test are not independently normalized to zero mean.
     assert not np.allclose(test["aux"].mean(axis=(0, 1)), [0, 0], atol=0.01)
     assert val["x"].shape[-1] == 3
 

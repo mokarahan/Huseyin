@@ -1,4 +1,4 @@
-# Récupère la source officielle NASA, puis prépare les .mat.
+# Fetch the official NASA source, then prepare the .mat files.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root

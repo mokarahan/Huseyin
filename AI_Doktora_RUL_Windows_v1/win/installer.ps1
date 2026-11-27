@@ -1,5 +1,5 @@
-# Prerequis : Python 3.9 x64 installe depuis python.org, lanceur py.exe.
-# Les fichiers sont resolus depuis leur emplacement, pas depuis $HOME.
+# Prerequisites: Python 3.9 x64 installed from python.org, py.exe launcher.
+# Files are resolved relative to their own location, not from $HOME.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -14,4 +14,4 @@ if ($LASTEXITCODE -ne 0) { throw 'Mise a jour pip echouee.' }
 if ($LASTEXITCODE -ne 0) { throw 'Installation dependances echouee.' }
 & .\.venv\Scripts\python.exe -m pytest -q tests
 if ($LASTEXITCODE -ne 0) { throw 'Tests automatiques echoues.' }
-Write-Host 'Installation terminee. Lire README.md, puis executer win\nasa.ps1'
+Write-Host 'Installation complete. Read README.md, then run win\nasa.ps1'

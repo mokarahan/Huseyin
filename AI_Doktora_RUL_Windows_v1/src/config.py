@@ -1,4 +1,4 @@
-"""Choix expérimentaux explicites; aucune configuration implicite dans les scripts."""
+"""Explicit experimental choices; no implicit configuration in the scripts."""
 from dataclasses import dataclass
 
 BATTERIES = ("B0005", "B0006", "B0007", "B0018")
@@ -26,10 +26,10 @@ class Experiment:
 
     def validate(self):
         if self.window < 2 or self.epochs < 1 or self.batch < 1:
-            raise ValueError("window>=2, epochs>=1 et batch>=1 sont obligatoires")
+            raise ValueError("window>=2, epochs>=1 and batch>=1 are required")
         if self.hidden % self.heads:
-            raise ValueError("hidden doit etre divisible par heads")
+            raise ValueError("hidden must be divisible by heads")
         if not 0 <= self.alpha_soh <= 1:
-            raise ValueError("alpha_soh doit appartenir a [0,1]")
+            raise ValueError("alpha_soh must be in [0,1]")
         if self.aux_mode not in ("all", "no_cycle", "no_duration", "none"):
-            raise ValueError("aux_mode invalide : " + self.aux_mode)
+            raise ValueError("Invalid aux_mode: " + self.aux_mode)

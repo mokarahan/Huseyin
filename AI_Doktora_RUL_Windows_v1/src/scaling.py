@@ -1,4 +1,4 @@
-"""Standardisation strictement ajustée sur les batteries d'entraînement."""
+"""Standardization fitted strictly on the training batteries."""
 import numpy as np
 
 
@@ -7,8 +7,8 @@ class TrainScaler:
         self.parameters = None
 
     def fit(self, train):
-        # Les fenêtres se chevauchent : on ajuste sur leurs observations
-        # exclusivement TRAIN. Jamais sur validation ni test.
+        # Windows overlap: we fit on their observations from TRAIN
+        # exclusively. Never on validation or test.
         specs = (("x", (0, 1, 2)), ("aux", (0, 1)), ("y", (0,)))
         self.parameters = {}
         for key, axes in specs:
@@ -21,7 +21,7 @@ class TrainScaler:
 
     def transform(self, batch):
         if self.parameters is None:
-            raise RuntimeError("fit(train) doit preceder transform")
+            raise RuntimeError("fit(train) must precede transform")
         copy = dict(batch)
         for key, (mean, std) in self.parameters.items():
             copy[key] = ((batch[key] - mean) / std).astype(np.float32)

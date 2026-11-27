@@ -17,14 +17,14 @@ def test_forward_and_backprop(variant):
 
 
 def test_hybrid_causal_when_history_extended():
-    # Une prédiction au cycle 4 ne doit dépendre d'aucun cycle ultérieur.
+    # A prediction at cycle 4 must not depend on any later cycle.
     model = BatteryPredictor("hybrid", hidden=16, heads=4, dropout=0)
     model.eval()
     x = torch.randn(1, 4, 128, 3)
     a = torch.randn(1, 4, 2)
     future = torch.randn(1, 1, 128, 3)
     with torch.no_grad():
-        # Prédit à partir des 4 cycles présents : résultats reproductibles.
+        # Predicts from the 4 present cycles: reproducible results.
         first = model(x, a)
         second = model(x, a)
     assert torch.allclose(first, second)
@@ -32,8 +32,8 @@ def test_hybrid_causal_when_history_extended():
 
 
 def test_attention_mask_and_tcn_prevent_future_information():
-    # Changer les deux derniers cycles ne doit pas modifier l'état des
-    # trois premiers, grâce au masque MHA et au padding causal TCN.
+    # Changing the last two cycles must not alter the state of the
+    # first three, thanks to the MHA mask and the causal TCN padding.
     torch.manual_seed(8)
     model = BatteryPredictor("hybrid", hidden=16, heads=4, dropout=0)
     model.eval()

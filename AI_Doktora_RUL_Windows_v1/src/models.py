@@ -1,7 +1,7 @@
-"""Un encodeur CNN commun, quatre variantes comparables et deux sorties.
+"""A shared CNN encoder, four comparable variants and two outputs.
 
-Axes : B=batch, W=cycles observés, P=128 instants, C=3 signaux.
-Les masques/conv causaux interdisent les observations des cycles suivants.
+Axes: B=batch, W=observed cycles, P=128 time steps, C=3 signals.
+Causal masks/convs forbid observations from subsequent cycles.
 """
 import torch
 from torch import nn
@@ -11,10 +11,10 @@ MODELS = ("cnn", "cnn_lstm", "cnn_tcn", "hybrid")
 
 
 class CycleEncoder(nn.Module):
-    """Deux convolutions 1D sur le signal d'un cycle de décharge.
+    """Two 1D convolutions over the signal of one discharge cycle.
 
-    Les petits noyaux capturent la forme locale V/I/T; 2 couches limitent
-    les paramètres sur seulement quelques batteries NASA.
+    Small kernels capture the local V/I/T shape; 2 layers limit
+    the parameter count given only a few NASA batteries.
     """
     def __init__(self, hidden=32):
         super().__init__()
@@ -33,7 +33,7 @@ class CycleEncoder(nn.Module):
 
 
 class CausalBlock(nn.Module):
-    """Convolution résiduelle sur les cycles; padding seulement à gauche."""
+    """Residual convolution over cycles; left padding only."""
     def __init__(self, width, dilation, dropout):
         super().__init__()
         self.kernel = 3
@@ -49,17 +49,17 @@ class CausalBlock(nn.Module):
 
 
 class BatteryPredictor(nn.Module):
-    """Variants : CNN; CNN-LSTM; CNN-TCN; CNN-MHA-TCN (hybrid).
+    """Variants: CNN; CNN-LSTM; CNN-TCN; CNN-MHA-TCN (hybrid).
 
-    Attention par 4 têtes causales. TCN de 2 blocs de dilatations 1 et 2.
-    Les deux têtes sont linéaires : les cibles z-score peuvent être négatives.
+    Attention with 4 causal heads. TCN of 2 blocks with dilations 1 and 2.
+    Both heads are linear: the z-score targets can be negative.
     """
     def __init__(self, variant="hybrid", hidden=32, heads=4, dropout=0.10):
         super().__init__()
         if variant not in MODELS:
-            raise ValueError("Modele inconnu : " + variant)
+            raise ValueError("Unknown model: " + variant)
         if hidden % heads:
-            raise ValueError("hidden doit etre divisible par heads")
+            raise ValueError("hidden must be divisible by heads")
         self.variant = variant
         self.encoder = CycleEncoder(hidden)
         if variant == "cnn_lstm":
@@ -78,14 +78,14 @@ class BatteryPredictor(nn.Module):
 
     def forward(self, x, aux):
         if self.variant == "cnn":
-            # Référence sans mémoire : encode seulement la dernière décharge.
+            # Memoryless baseline: encodes only the last discharge.
             x, aux = x[:, -1:, :, :], aux[:, -1:, :]
         h = self.encoder(x, aux)  # [B, W, hidden]
         if self.variant == "cnn_lstm":
             h, _ = self.lstm(h)
         if self.variant == "hybrid":
             w = h.size(1)
-            # True = position future inaccessible pour toute requête ancienne.
+            # True = future position inaccessible to any earlier query.
             mask = torch.ones(w, w, dtype=torch.bool, device=h.device).triu(1)
             attended, _ = self.attention(h, h, h, attn_mask=mask,
                                          need_weights=False)

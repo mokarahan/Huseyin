@@ -1,4 +1,4 @@
-"""Données SYNTHÉTIQUES de démonstration. Jamais pour publication scientifique."""
+"""SYNTHETIC demonstration data. Never for scientific publication."""
 from pathlib import Path
 import numpy as np
 from .config import CAPACITY_NOMINAL_AH, N_POINTS

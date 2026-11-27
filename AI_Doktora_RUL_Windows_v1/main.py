@@ -1,4 +1,4 @@
-"""Entrée unique de AI-Doktora; exécuter `python main.py --help`."""
+"""Single entry point of AI-Doktora; run `python main.py --help`."""
 import argparse
 import json
 from pathlib import Path
@@ -12,15 +12,15 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AI-Doktora : futur SOH et RUL batterie NASA")
+    parser = argparse.ArgumentParser(description="AI-Doktora: future SOH and RUL of NASA batteries")
     sub = parser.add_subparsers(dest="command", required=True)
-    dl = sub.add_parser("download", help="Télécharger les fichiers NASA officiels")
-    dl.add_argument("--archive", type=Path, help="ZIP NASA officiel déjà téléchargé")
-    sub.add_parser("prepare", help="Convertir MAT => NPZ et générer l'audit")
-    sub.add_parser("audit", help="Afficher événements EOL et nombre de cycles")
-    sub.add_parser("demo", help="Générer un dataset SYNTHETIQUE pour les tests seulement")
-    train = sub.add_parser("train", help="Entraîner une architecture sur un fold séparé par batterie")
-    comparison = sub.add_parser("compare", help="Comparer toutes les architectures sur plusieurs folds")
+    dl = sub.add_parser("download", help="Download the official NASA files")
+    dl.add_argument("--archive", type=Path, help="Already downloaded official NASA ZIP")
+    sub.add_parser("prepare", help="Convert MAT => NPZ and generate the audit")
+    sub.add_parser("audit", help="Show EOL events and number of cycles")
+    sub.add_parser("demo", help="Generate a SYNTHETIC dataset for tests only")
+    train = sub.add_parser("train", help="Train one architecture on a battery-separated fold")
+    comparison = sub.add_parser("compare", help="Compare all architectures over several folds")
     for p in (train, comparison):
         p.add_argument("--test", choices=["all", "B0005", "B0006", "B0007", "B0018"],
                        default="all")
@@ -31,18 +31,18 @@ def main():
         p.add_argument("--patience", type=int, default=15)
         p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
         p.add_argument("--aux-mode", choices=["all", "no_cycle", "no_duration", "none"],
-                       default="all", help="Ablation des variables auxiliaires")
+                       default="all", help="Ablation of auxiliary variables")
         p.add_argument("--out", type=Path, default=ROOT / "results" / "experiments")
     train.add_argument("--model", choices=["ridge", "cnn", "cnn_lstm", "cnn_tcn", "hybrid"],
                        default="hybrid")
     comparison.add_argument("--seeds", type=int, nargs="+",
-                            help="Liste de graines pour évaluation multi-graines avec IC 95 %% et t-test")
-    inference = sub.add_parser("predict", help="Inférence sans consulter les étiquettes")
+                            help="List of seeds for multi-seed evaluation with 95%% CI and t-test")
+    inference = sub.add_parser("predict", help="Inference without looking at the labels")
     inference.add_argument("--checkpoint", type=Path, required=True)
     inference.add_argument("--battery", choices=["B0005", "B0006", "B0007", "B0018"],
                            required=True)
     inference.add_argument("--cycle", type=int, required=True,
-                           help="Nombre de cycles de décharge achevés et observés")
+                           help="Number of completed and observed discharge cycles")
     args = parser.parse_args()
     raw = ROOT / "data" / "raw"
     processed = ROOT / "data" / "processed"
@@ -52,9 +52,9 @@ def main():
         answer = prepare(raw, processed)
     elif args.command == "demo":
         if list(processed.glob("B*.npz")):
-            parser.error("data/processed contient deja des batteries. Effacer ou sauvegarder ce dossier avant demo.")
+            parser.error("data/processed already contains batteries. Delete or back up this folder before running demo.")
         make_demo(processed)
-        answer = {"message": "DEMONSTRATION SYNTHETIQUE; aucune valeur n'est un resultat NASA"}
+        answer = {"message": "SYNTHETIC DEMONSTRATION; no value is a NASA result"}
     elif args.command == "audit":
         cells = read_cells(processed)
         answer = {name: {"cycles": len(v["capacity"]),
@@ -62,10 +62,10 @@ def main():
                          else eol_index(v["capacity"]) + 1}
                   for name, v in cells.items()}
         if (processed / "DEMO_NOT_REAL_DATA.txt").exists():
-            answer["warning"] = "DONNEES SYNTHETIQUES; PAS NASA"
+            answer["warning"] = "SYNTHETIC DATA; NOT NASA"
     elif args.command in ("train", "compare"):
         if (processed / "DEMO_NOT_REAL_DATA.txt").exists():
-            print("AVERTISSEMENT: donnees synthetiques; ne pas publier ces scores")
+            print("WARNING: synthetic data; do not publish these scores")
         cfg = Experiment(window=args.window, epochs=args.epochs, batch=args.batch,
                          seed=args.seed, patience=args.patience, aux_mode=args.aux_mode)
         variants = [args.model] if args.command == "train" else [
@@ -80,7 +80,7 @@ def main():
         answer = predict_checkpoint(args.checkpoint, processed,
                                     args.battery, args.cycle)
     else:
-        parser.error("Commande inconnue")
+        parser.error("Unknown command")
     print(json.dumps(answer, indent=2, ensure_ascii=False))
 
 

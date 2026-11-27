@@ -1,7 +1,7 @@
-"""Téléchargement du jeu NASA officiel (non redistribué dans ce projet).
+"""Download of the official NASA dataset (not redistributed in this project).
 
-Le ZIP NASA 5 contient éventuellement des ZIP imbriqués. On ne récupère
-que B0005, B0006, B0007 et B0018. Aucun miroir non vérifié.
+The NASA 5 ZIP may contain nested ZIPs. Only B0005, B0006, B0007
+and B0018 are extracted. No unverified mirrors.
 """
 import hashlib
 import tempfile
@@ -24,7 +24,7 @@ def _copy_selected(archive, raw_dir, hashes):
             continue
         if name in {battery + ".MAT" for battery in BATTERIES}:
             if member.file_size > MAX_MAT_BYTES:
-                raise ValueError("Fichier MAT de taille excessive: " + name)
+                raise ValueError("MAT file too large: " + name)
             target = Path(raw_dir) / (Path(name).stem + ".mat")
             digest = hashlib.sha256()
             with archive.open(member) as src, target.open("wb") as out:
@@ -37,9 +37,9 @@ def _copy_selected(archive, raw_dir, hashes):
             hashes[target.stem] = digest.hexdigest()
         elif name.endswith(".ZIP"):
             if member.file_size > MAX_NESTED_ZIP_BYTES:
-                raise ValueError("ZIP interne trop volumineux")
-            # Temporaire sur disque : aucun chargement de plusieurs centaines
-            # de Mo en RAM sur une machine Windows ordinaire.
+                raise ValueError("Nested ZIP too large")
+            # Temporary file on disk: no loading of several hundred MB
+            # into RAM on an ordinary Windows machine.
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_zip = Path(temp_dir) / "nasa_nested.zip"
                 with archive.open(member) as source, temp_zip.open("wb") as out:
@@ -49,12 +49,12 @@ def _copy_selected(archive, raw_dir, hashes):
 
 
 def download_nasa(raw_dir, archive_path=None):
-    """archive_path permet l'installation strictement hors-ligne."""
+    """archive_path enables a strictly offline installation."""
     raw_dir = Path(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     archive = Path(archive_path) if archive_path else raw_dir / "nasa_original.zip"
     if not archive.exists():
-        print("Telechargement officiel NASA :", NASA_URL)
+        print("Official NASA download:", NASA_URL)
         try:
             with urllib.request.urlopen(NASA_URL, timeout=120) as response, \
                     archive.open("wb") as output:
@@ -68,11 +68,11 @@ def download_nasa(raw_dir, archive_path=None):
         with ZipFile(archive) as z:
             _copy_selected(z, raw_dir, hashes)
     except (BadZipFile, OSError) as exc:
-        raise RuntimeError("Archive NASA invalide: %s" % exc) from exc
+        raise RuntimeError("Invalid NASA archive: %s" % exc) from exc
     manifest = {"source": NASA_URL, "archive": str(archive),
                 "archive_sha256": sha, "mat_sha256": hashes,
                 "missing": [b for b in BATTERIES if b not in hashes]}
     (raw_dir / "provenance.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     if not hashes:
-        raise ValueError("Aucun fichier B0005/B0006/B0007/B0018 trouve dans l'archive")
+        raise ValueError("No B0005/B0006/B0007/B0018 file found in the archive")
     return manifest
